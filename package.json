@@ -1,6 +1,6 @@
 {
-  "name": "uart.ts",
-  "version": "1.0.4",
+  "name": "@espruino-tools/uart",
+  "version": "1.0.1",
   "description": "A reimplementation of uart.js with some minor changes",
   "main": "lib/uart.js",
   "types": "lib/uart.d.ts",
@@ -14,14 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Espruino-Tooling/uart.ts.git"
-  },
+    "url": "git+https://github.com/espruino-tools/uart.git"
+  }
+  ,
   "author": "Callum McLuskey",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Espruino-Tooling/uart.ts/issues"
+    "url": "https://github.com/espruino-tools/uart/issues"
   },
-  "homepage": "https://github.com/Espruino-Tooling/uart.ts#readme",
+  "homepage": "https://github.com/espruino-tools/uart#readme",
   "devDependencies": {
     "@types/dom-serial": "^1.0.2",
     "@types/jest": "^29.1.1",

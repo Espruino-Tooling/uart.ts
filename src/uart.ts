@@ -4,6 +4,34 @@ declare global {
   }
 }
 
+interface Connection {
+  isOpening: boolean;
+  isOpen: boolean;
+  received: string;
+  txInProgress: boolean;
+  cb?: Function | undefined;
+  hadData?: boolean;
+  close(callback?: Function): void;
+  emit(evt: string, data?: string): void;
+  write(data?: string, callback?: Function): void;
+  on(name: string, action: Function): void;
+}
+
+interface UART {
+  debug: number;
+  flowControl: boolean;
+  log: (level: number, s: string) => void;
+  writeProgress: (charsSent?: any, charsTotal?: any) => void;
+  connect: typeof connect;
+  write: typeof write;
+  eval: typeof evaluate;
+  setTime: (cb: Function) => void;
+  isConnected: () => boolean;
+  getConnection: () => any;
+  close: () => void;
+  modal: (callback: Function) => void;
+}
+
 interface MSStreamType {
   type: string;
   msClose(): void;
@@ -70,17 +98,15 @@ var WebBluetooth = {
       return "This Web Browser doesn't support Web Bluetooth.\nPlease see https://www.espruino.com/Puck.js+Quick+Start";
     }
   },
-  // FIND OUT CORRECT TYPES FOR THIS
-  connect: function (connection: any, callback: Function) {
+  connect: function (connection: Connection, callback: Function) {
     var NORDIC_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     var NORDIC_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
     var NORDIC_RX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     var DEFAULT_CHUNKSIZE = 20;
 
     // FIND OUT CORRECT TYPES FOR THIS
-    var btServer: any = undefined;
+    var btServer: any | undefined = undefined;
     var btService: any;
-    var connectionDisconnectCallback: any;
     var txCharacteristic: any;
     var rxCharacteristic: any;
     var txDataQueue: any[] = [];
@@ -103,8 +129,7 @@ var WebBluetooth = {
       }
     };
 
-    // FIND OUT CORRECT TYPES FOR THIS
-    connection.write = function (data: any, callback: Function) {
+    connection.write = function (data: string, callback: Function) {
       if (data)
         txDataQueue.push({
           data: data,
@@ -272,10 +297,8 @@ var WebSerial = {
       return "Serving off HTTP (not HTTPS) - Web Serial not enabled";
     return true;
   },
-  // FIND OUT CORRECT TYPES FOR THIS
-  connect: function (connection: any, callback: Function) {
-    // FIND OUT CORRECT TYPES FOR THIS
-    var serialPort: any;
+  connect: function (connection: Connection, callback: Function) {
+    var serialPort: SerialPort | undefined;
     function disconnected() {
       connection.isOpening = false;
       if (connection.isOpen) {
@@ -294,7 +317,7 @@ var WebSerial = {
       })
       .then(function () {
         function readLoop() {
-          var reader = serialPort.readable.getReader();
+          var reader = (serialPort as SerialPort).readable.getReader();
           // FIND OUT CORRECT TYPES FOR THIS
           reader.read().then(function ({ value, done }: any) {
             reader.releaseLock();
@@ -329,7 +352,7 @@ var WebSerial = {
       disconnected();
     };
     connection.write = function (data: string, callback: Function) {
-      var writer = serialPort.writable.getWriter();
+      var writer = (serialPort as SerialPort).writable.getWriter();
       // TODO: progress?
       writer
         .write(str2ab(data))
@@ -350,14 +373,13 @@ var WebSerial = {
 endpoints.push(WebBluetooth);
 endpoints.push(WebSerial);
 // ======================================================================
-// FIND OUT CORRECT TYPES FOR THIS
-var connection: any;
+var connection: Connection | undefined;
 function connect(callback: Function) {
   var connection = {
     on: function (evt: string, cb: Function) {
       (this as any)["on" + evt] = cb;
     },
-    emit: function (evt: string, data: Function) {
+    emit: function (evt: string, data: string) {
       if ((this as any)["on" + evt]) (this as any)["on" + evt](data);
     },
     isOpen: false,
@@ -453,12 +475,12 @@ function write(data: string, callback: Function, callbackNewline?: boolean) {
   var cbTimeout: any;
   function onWritten() {
     if (callbackNewline) {
-      connection.cb = function () {
-        var newLineIdx = connection.received.indexOf("\n");
+      connection!.cb = function () {
+        var newLineIdx = connection!.received.indexOf("\n");
         if (newLineIdx >= 0) {
-          var l = connection.received.substr(0, newLineIdx);
-          connection.received = connection.received.substr(newLineIdx + 1);
-          connection.cb = undefined;
+          var l = connection!.received.substr(0, newLineIdx);
+          connection!.received = connection!.received.substr(newLineIdx + 1);
+          connection!.cb = undefined;
           if (cbTimeout) clearTimeout(cbTimeout);
           cbTimeout = undefined;
           if (callback) callback(l);
@@ -477,18 +499,18 @@ function write(data: string, callback: Function, callbackNewline?: boolean) {
       cbTimeout = undefined;
       if (maxTime) maxTime--;
       if (maxDataTime) maxDataTime--;
-      if (connection.hadData) maxDataTime = dataWaitTime;
+      if (connection!.hadData) maxDataTime = dataWaitTime;
       if (maxDataTime && maxTime) {
         cbTimeout = setTimeout(timeout, 100);
       } else {
-        connection.cb = undefined;
+        connection!.cb = undefined;
         if (callbackNewline) log(2, "write waiting for newline timed out");
-        if (callback) callback(connection.received);
+        if (callback) callback(connection!.received);
         isBusy = false;
         handleQueue();
-        connection.received = "";
+        connection!.received = "";
       }
-      connection.hadData = false;
+      connection!.hadData = false;
     }, 100);
   }
 
@@ -499,23 +521,23 @@ function write(data: string, callback: Function, callbackNewline?: boolean) {
   }
 
   // FIND OUT CORRECT TYPES FOR THIS
-  connection = connect(function (uart: any) {
+  (connection as any) = connect(function (uart: UART) {
     if (!uart) {
       connection = undefined;
       if (callback) callback(null);
       return;
     }
-    connection.received = "";
-    connection.on("data", function (d: string) {
-      connection.received += d;
-      connection.hadData = true;
-      if (connection.cb) connection.cb(d);
+    connection!.received = "";
+    connection!.on("data", function (d: string) {
+      connection!.received += d;
+      connection!.hadData = true;
+      if (connection!.cb) connection!.cb(d);
     });
-    connection.on("close", function (d: string) {
+    connection!.on("close", function (d: string) {
       connection = undefined;
     });
     isBusy = true;
-    connection.write(data, onWritten);
+    connection!.write(data, onWritten);
   });
 }
 
@@ -532,7 +554,6 @@ function evaluate(expr: string, cb: Function) {
       try {
         var json = JSON.parse(d.trim());
         cb(json);
-        // FIND OUT CORRECT TYPES FOR THIS
       } catch (e: any) {
         log(
           1,
@@ -550,7 +571,7 @@ function evaluate(expr: string, cb: Function) {
 
 // ----------------------------------------------------------
 
-var uart = {
+var uart: UART = {
   /// Are we writing debug information? 0 is no, 1 is some, 2 is more, 3 is all.
   debug: 1,
   /// Should we use flow control? Default is true
@@ -561,8 +582,8 @@ var uart = {
   },
   /// Called with the current send progress or undefined when done - you can replace this with your own function
   // FIND OUT CORRECT TYPES FOR THIS
-  writeProgress: function (charsSent?: any, charsTotal?: any) {
-    //console.log(charsSent + "/" + charsTotal);
+  writeProgress: function (charsSent?: number, charsTotal?: number) {
+    console.log(charsSent + "/" + charsTotal);
   },
   /** Connect to a new device - this creates a separate
    connection to the one `write` and `eval` use. */
