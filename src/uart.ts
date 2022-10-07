@@ -583,7 +583,7 @@ var uart: UART = {
   /// Called with the current send progress or undefined when done - you can replace this with your own function
   // FIND OUT CORRECT TYPES FOR THIS
   writeProgress: function (charsSent?: number, charsTotal?: number) {
-    console.log(charsSent + "/" + charsTotal);
+    // console.log(charsSent + "/" + charsTotal);
   },
   /** Connect to a new device - this creates a separate
    connection to the one `write` and `eval` use. */
