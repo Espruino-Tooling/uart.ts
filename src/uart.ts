@@ -129,7 +129,7 @@ var WebBluetooth = {
       }
     };
 
-    connection.write = function (data: string, callback: Function) {
+    connection.write = function (data: string, callback?: Function) {
       if (data)
         txDataQueue.push({
           data: data,
@@ -351,13 +351,13 @@ var WebSerial = {
       }
       disconnected();
     };
-    connection.write = function (data: string, callback: Function) {
+    connection.write = function (data: string, callback?: Function) {
       var writer = (serialPort as SerialPort).writable.getWriter();
       // TODO: progress?
       writer
         .write(str2ab(data))
         .then(function () {
-          callback();
+          callback?.();
         })
         .catch(function (error: Error) {
           log(0, "SEND ERROR: " + error);
@@ -458,7 +458,7 @@ function checkIfSupported() {
 /* convenience function... Write data, call the callback with data:
      callbackNewline = false => if no new data received for ~0.2 sec
      callbackNewline = true => after a newline */
-function write(data: string, callback: Function, callbackNewline?: boolean) {
+function write(data: string, callback?: Function, callbackNewline?: boolean) {
   if (!checkIfSupported()) return;
   if (isBusy) {
     log(3, "Busy - adding write to queue");
