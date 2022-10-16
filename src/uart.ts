@@ -406,11 +406,7 @@ function connect(callback: Function) {
     "style",
     "color:#fff;background:#000;padding:8px 8px 4px 8px;font-weight:bold;"
   );
-  let closeModal = document.getElementById("esp-close-modal");
-  closeModal!.onclick = function () {
-    document.body.removeChild(menu);
-    document.body.removeChild(e);
-  };
+
   menu.appendChild(menutitle);
   var items = document.createElement("div");
   items.setAttribute(
@@ -449,6 +445,12 @@ function connect(callback: Function) {
 
   document.body.appendChild(e);
   document.body.appendChild(menu);
+
+  let closeModal = document.getElementById("esp-close-modal");
+  closeModal?.addEventListener("click", function () {
+    document.body.removeChild(menu);
+    document.body.removeChild(e);
+  });
   return connection;
 }
 function checkIfSupported() {
