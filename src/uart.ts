@@ -400,11 +400,17 @@ function connect(callback: Function) {
     "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family: Sans-Serif;z-index:101;"
   );
   var menutitle = document.createElement("div");
-  menutitle.innerText = "SELECT A PORT...";
+  menutitle.innerHTML =
+    "<div style='display:flex;align-items:center;justify-content:space-between;'><p style='margin:0'>SELECT A PORT...</p><p id='esp-close-modal' style='margin:0,cursor:pointer;'>X</p></div>";
   menutitle.setAttribute(
     "style",
     "color:#fff;background:#000;padding:8px 8px 4px 8px;font-weight:bold;"
   );
+  let closeModal = document.getElementById("esp-close-modal");
+  closeModal!.onclick = function () {
+    document.body.removeChild(menu);
+    document.body.removeChild(e);
+  };
   menu.appendChild(menutitle);
   var items = document.createElement("div");
   items.setAttribute(
@@ -440,6 +446,7 @@ function connect(callback: Function) {
     };
     items.appendChild(ep);
   });
+
   document.body.appendChild(e);
   document.body.appendChild(menu);
   return connection;
