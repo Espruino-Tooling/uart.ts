@@ -19,6 +19,17 @@ const styles = {
       "& *": {
         margin: 0,
       },
+
+      "& div": {
+        cursor: "pointer",
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        "&:hover": {
+          background: "rgba(0,0,0,0.05)",
+        },
+      },
     },
   },
   items: {
@@ -41,13 +52,6 @@ const styles = {
       paddingTop: 5,
       margin: 0,
       color: "#7D7D7D",
-    },
-    "& svg": {
-      cursor: "pointer",
-      borderRadius: "50%",
-      "&:hover": {
-        background: "rgba(0,0,0,0.05)",
-      },
     },
   },
   endpoints: {
@@ -490,9 +494,23 @@ function connect(callback: Function) {
   );
 
   var menutitle = document.createElement("div");
-  menutitle.innerHTML =
-    '<div class="esp-tools-header-bar"><p>Connect</p><svg id="esp-tools-close-modal" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#000" stroke-width="2" d="M7,7 L17,17 M7,17 L17,7"></path></svg></div>';
   menutitle.classList.add(classes.menu);
+
+  var menuContent = document.createElement("div");
+  menuContent.classList.add("esp-tools-header-bar");
+
+  let menuTitle = document.createElement("p");
+  menuTitle.innerText = "Connect";
+
+  menuContent.appendChild(menuTitle);
+
+  let menuClose = document.createElement("div");
+  menuClose.innerHTML =
+    '<svg id="esp-tools-close-modal" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#000" stroke-width="2" d="M7,7 L17,17 M7,17 L17,7"></path></svg>';
+
+  menuContent.appendChild(menuClose);
+
+  menutitle.appendChild(menuContent);
 
   menu.appendChild(menutitle);
   var items = document.createElement("div");
@@ -502,6 +520,7 @@ function connect(callback: Function) {
   items.appendChild(p);
   menu.appendChild(items);
   // FIND OUT CORRECT TYPES FOR THIS
+
   endpoints.forEach(function (endpoint: any) {
     var supported = endpoint.isSupported();
     if (supported !== true)
@@ -527,14 +546,10 @@ function connect(callback: Function) {
     items.appendChild(ep);
   });
 
-  let close: HTMLElement = document.getElementById(
-    "esp-tools-close-modal"
-  ) as HTMLElement;
-  close.addEventListener("click", function (evt) {
-    evt.preventDefault();
+  menuClose.onclick = function () {
     document.body.removeChild(menu);
     document.body.removeChild(e);
-  });
+  };
 
   document.body.appendChild(e);
   document.body.appendChild(menu);
