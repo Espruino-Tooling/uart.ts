@@ -42,6 +42,13 @@ const styles = {
       margin: 0,
       color: "#7D7D7D",
     },
+    "& svg": {
+      cursor: "pointer",
+      borderRadius: "50%",
+      "&:hover": {
+        background: "rgba(0,0,0,0.05)",
+      },
+    },
   },
   endpoints: {
     width: 100,
@@ -57,7 +64,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     "&:hover": {
-      background: "rgba(0,0,0,0.1)",
+      background: "rgba(0,0,0,0.05)",
     },
     "& .esp-tools-icons": {
       width: 48,
@@ -152,6 +159,7 @@ function log(level: number, s: string) {
 
 // FIND OUT CORRECT TYPES FOR THIS
 var endpoints: any = [];
+
 var WebBluetooth = {
   name: "Web Bluetooth",
   description: "Bluetooth LE devices",
@@ -483,7 +491,7 @@ function connect(callback: Function) {
 
   var menutitle = document.createElement("div");
   menutitle.innerHTML =
-    "<div class='esp-tools-header-bar'><p>Connect</p><p id='esp-close-modal'>X</p></div>";
+    '<div class="esp-tools-header-bar"><p>Connect</p><svg id="esp-tools-close-modal" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#000" stroke-width="2" d="M7,7 L17,17 M7,17 L17,7"></path></svg></div>';
   menutitle.classList.add(classes.menu);
 
   menu.appendChild(menutitle);
@@ -517,6 +525,15 @@ function connect(callback: Function) {
       document.body.removeChild(e);
     };
     items.appendChild(ep);
+  });
+
+  let close: HTMLElement = document.getElementById(
+    "esp-tools-close-modal"
+  ) as HTMLElement;
+  close.addEventListener("click", function (evt) {
+    evt.preventDefault();
+    document.body.removeChild(menu);
+    document.body.removeChild(e);
   });
 
   document.body.appendChild(e);
