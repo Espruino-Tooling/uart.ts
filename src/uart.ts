@@ -393,24 +393,23 @@ function connect(callback: Function) {
     "style",
     "position:absolute;top:0px;left:0px;right:0px;bottom:0px;opacity:0.5;z-index:100;background:black;"
   );
+  e.classList.add("esp-tools-modal");
   // menu
   var menu = document.createElement("div");
   menu.setAttribute(
     "style",
     "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family: Sans-Serif;z-index:101;"
   );
+  menu.classList.add("esp-tools-menu");
+
   var menutitle = document.createElement("div");
   menutitle.innerHTML =
-    "<div style='display:flex;align-items:center;justify-content:space-between;'><p style='margin:0'>SELECT A PORT...</p><p id='esp-close-modal' style='margin:0,cursor:pointer;'>X</p></div>";
+    "<div style='display:flex;align-items:center;justify-content:space-between;'><p style='margin:0'>SELECT A PORT...</p><p id='esp-close-modal' style='margin:0;cursor:pointer;'>X</p></div>";
   menutitle.setAttribute(
     "style",
     "color:#fff;background:#000;padding:8px 8px 4px 8px;font-weight:bold;"
   );
-  let closeModal = document.getElementById("esp-close-modal");
-  closeModal!.onclick = function () {
-    document.body.removeChild(menu);
-    document.body.removeChild(e);
-  };
+
   menu.appendChild(menutitle);
   var items = document.createElement("div");
   items.setAttribute(
