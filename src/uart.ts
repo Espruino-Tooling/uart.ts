@@ -365,7 +365,11 @@ var WebBluetooth = {
         callback(connection);
         connection.emit("open");
         // if we had any writes queued, do them now
-        connection.write();
+        if (typeof connection.write !== undefined) {
+          connection.write();
+        } else {
+          connection.close();
+        }
       })
       .catch(function (error) {
         log(1, "ERROR: " + error);
@@ -472,13 +476,17 @@ function connect(callback: Function) {
     on: function (evt: string, cb: Function) {
       (this as any)["on" + evt] = cb;
     },
-    emit: function (evt: string, data: string) {
+    emit: function (evt: string, data?: string) {
       if ((this as any)["on" + evt]) (this as any)["on" + evt](data);
     },
     isOpen: false,
     isOpening: true,
     txInProgress: false,
-  };
+  } as any;
+
+  connection!.on("close", function (d: string) {
+    connection = undefined;
+  });
 
   // modal
   var e = document.createElement("div");
@@ -549,6 +557,13 @@ function connect(callback: Function) {
   menuClose.onclick = function () {
     document.body.removeChild(menu);
     document.body.removeChild(e);
+    connection.isOpening = false;
+    if (connection.isOpen) {
+      connection.isOpen = false;
+      connection.emit("close");
+    } else {
+      if (callback) callback(null);
+    }
   };
 
   document.body.appendChild(e);
@@ -628,7 +643,11 @@ function write(data: string, callback?: Function, callbackNewline?: boolean) {
   if (connection && (connection.isOpen || connection.isOpening)) {
     if (!connection.txInProgress) connection.received = "";
     isBusy = true;
-    return connection.write(data, onWritten);
+    if (typeof connection.write !== undefined) {
+      return connection.write(data, onWritten);
+    } else {
+      return connection.close();
+    }
   }
 
   // FIND OUT CORRECT TYPES FOR THIS
