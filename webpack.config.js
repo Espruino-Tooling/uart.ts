@@ -9,7 +9,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, "./min"),
-    filename: "uart.min.js", // <--- Will be compiled to this single file
+    filename: "main.min.js", // <--- Will be compiled to this single file
     libraryTarget: "var",
     library: "ESPT_uart",
   },
