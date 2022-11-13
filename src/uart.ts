@@ -365,11 +365,7 @@ var WebBluetooth = {
         callback(connection);
         connection.emit("open");
         // if we had any writes queued, do them now
-        if (typeof connection.write !== undefined) {
-          connection.write();
-        } else {
-          connection.close();
-        }
+        connection.write();
       })
       .catch(function (error) {
         log(1, "ERROR: " + error);
@@ -482,11 +478,7 @@ function connect(callback: Function) {
     isOpen: false,
     isOpening: true,
     txInProgress: false,
-  } as any;
-
-  connection!.on("close", function (d: string) {
-    connection = undefined;
-  });
+  };
 
   // modal
   var e = document.createElement("div");
@@ -560,7 +552,6 @@ function connect(callback: Function) {
     connection.isOpening = false;
     if (connection.isOpen) {
       connection.isOpen = false;
-      connection.emit("close");
     } else {
       if (callback) callback(null);
     }
@@ -643,11 +634,7 @@ function write(data: string, callback?: Function, callbackNewline?: boolean) {
   if (connection && (connection.isOpen || connection.isOpening)) {
     if (!connection.txInProgress) connection.received = "";
     isBusy = true;
-    if (typeof connection.write !== undefined) {
-      return connection.write(data, onWritten);
-    } else {
-      return connection.close();
-    }
+    return connection.write(data, onWritten);
   }
 
   // FIND OUT CORRECT TYPES FOR THIS
@@ -672,31 +659,29 @@ function write(data: string, callback?: Function, callbackNewline?: boolean) {
 }
 
 function evaluate(expr: string, cb: Function) {
-  if (!checkIfSupported()) return;
+  if (!checkIfSupported()) return false;
   if (isBusy) {
     log(3, "Busy - adding eval to queue");
     queue.push({ type: "eval", expr: expr, cb: cb });
-    return;
+    return false;
   }
   write(
     "\x10eval(process.env.CONSOLE).println(JSON.stringify(" + expr + "))\n",
     function (d: string) {
       try {
         var json = JSON.parse(d.trim());
-        cb(json);
+        cb(json, "success");
       } catch (e: any) {
         log(
           1,
           "Unable to decode " + JSON.stringify(d) + ", got " + e.toString()
         );
-        cb(
-          null,
-          "Unable to decode " + JSON.stringify(d) + ", got " + e.toString()
-        );
+        cb(null, "failed");
       }
     },
     true /*callbackNewline*/
   );
+  return true;
 }
 
 // ----------------------------------------------------------
