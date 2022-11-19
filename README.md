@@ -39,3 +39,5 @@ let UART = uart;
 
 UART.write("LED1.digitalWrite(LED1, 1)");
 ```
+
+_as mentioned above it is recommended to use the `core` package instead of the UART package as the implementation of this package is simplified without removing any functionality_
