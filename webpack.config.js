@@ -23,7 +23,6 @@ module.exports = {
         loader: "ts-loader",
       },
     ],
-    loaders: [{ test: /\.test.ts$/, loader: "ignore-loader" }],
   },
   optimization: {
     minimize: true,
