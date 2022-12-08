@@ -1,3 +1,95 @@
+import jss from "jss";
+import preset from "jss-preset-default";
+
+jss.setup(preset());
+
+const styles = {
+  menu: {
+    color: "#b2b2b2b",
+    background: "white",
+    padding: "10px 16px 10px 16px",
+    fontWeight: "medium",
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
+    border: "0.5px solid lightgray",
+    "& .esp-tools-header-bar": {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      "& *": {
+        margin: 0,
+      },
+
+      "& div": {
+        cursor: "pointer",
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        "&:hover": {
+          background: "rgba(0,0,0,0.05)",
+        },
+      },
+    },
+  },
+  items: {
+    color: "#000",
+    background: "white",
+    padding: "4px 8px 4px 8px",
+    display: "grid",
+    gridTemplateColumns: "fit-content(0)",
+    gridTemplateRows: "fit-content(0)",
+    borderBottomRightRadius: 7,
+    borderBottomLeftRadius: 7,
+    border: "0.5px solid lightgray",
+    borderTop: 0,
+
+    "& p": {
+      content: "Select a connection method to pair your device",
+      gridArea: "1 / 1 / 2 / 3",
+      fontSize: 12,
+      paddingLeft: 10,
+      paddingTop: 5,
+      margin: 0,
+      color: "#7D7D7D",
+    },
+  },
+  endpoints: {
+    width: 100,
+    height: 150,
+    margin: "4px 0px 4px 0px",
+    paddingLeft: 30,
+    paddingRight: 30,
+    borderRadius: 10,
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    textAlign: "center",
+    alignItems: "center",
+    justifyContent: "center",
+    "&:hover": {
+      background: "rgba(0,0,0,0.05)",
+    },
+    "& .esp-tools-icons": {
+      width: 48,
+      height: 48,
+    },
+    "& .esp-tools-name": {
+      fontSize: 14,
+      fontWeight: 500,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
+    "& .esp-tools-description": {
+      fontWeight: 300,
+      fontSize: 12,
+      color: "#666",
+    },
+  },
+};
+
+const { classes } = jss.createStyleSheet(styles).attach();
+
 declare global {
   interface Window {
     MSStream: MSStreamType;
@@ -17,6 +109,7 @@ interface Connection {
   on(name: string, action: Function): void;
 }
 
+var sentChunks: string[] = [];
 interface UART {
   debug: number;
   flowControl: boolean;
@@ -29,6 +122,7 @@ interface UART {
   isConnected: () => boolean;
   getConnection: () => any;
   close: () => void;
+  getWrittenData: () => Promise<any>;
   modal: (callback: Function) => void;
 }
 
@@ -71,10 +165,11 @@ function log(level: number, s: string) {
 
 // FIND OUT CORRECT TYPES FOR THIS
 var endpoints: any = [];
+
 var WebBluetooth = {
   name: "Web Bluetooth",
   description: "Bluetooth LE devices",
-  svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" fill="#ffffff"/></svg>',
+  svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" fill="#d2d2d2"/></svg>',
   isSupported: function () {
     if (
       navigator.platform.indexOf("Win") >= 0 &&
@@ -163,6 +258,7 @@ var WebBluetooth = {
         }
         connection.txInProgress = true;
         log(2, "Sending " + JSON.stringify(chunk));
+        sentChunks.push(JSON.stringify(chunk));
         txCharacteristic
           .writeValue(str2ab(chunk))
           .then(function () {
@@ -284,7 +380,7 @@ var WebBluetooth = {
 var WebSerial = {
   name: "Web Serial",
   description: "USB connected devices",
-  svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2 1.21 0 2.2-.98 2.2-2.2 0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z" fill="#ffffff"/></svg>',
+  svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2 1.21 0 2.2-.98 2.2-2.2 0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z" fill="#d2d2d2"/></svg>',
   isSupported: function () {
     if (!navigator.serial)
       return "No navigator.serial - Web Serial not enabled";
@@ -357,7 +453,7 @@ var WebSerial = {
       writer
         .write(str2ab(data))
         .then(function () {
-          callback?.();
+          callback?.(data);
         })
         .catch(function (error: Error) {
           log(0, "SEND ERROR: " + error);
@@ -379,7 +475,7 @@ function connect(callback: Function) {
     on: function (evt: string, cb: Function) {
       (this as any)["on" + evt] = cb;
     },
-    emit: function (evt: string, data: string) {
+    emit: function (evt: string, data?: string) {
       if ((this as any)["on" + evt]) (this as any)["on" + evt](data);
     },
     isOpen: false,
@@ -399,37 +495,49 @@ function connect(callback: Function) {
     "style",
     "position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family: Sans-Serif;z-index:101;"
   );
+
   var menutitle = document.createElement("div");
-  menutitle.innerText = "SELECT A PORT...";
-  menutitle.setAttribute(
-    "style",
-    "color:#fff;background:#000;padding:8px 8px 4px 8px;font-weight:bold;"
-  );
+  menutitle.classList.add(classes.menu);
+
+  var menuContent = document.createElement("div");
+  menuContent.classList.add("esp-tools-header-bar");
+
+  let menuTitle = document.createElement("p");
+  menuTitle.innerText = "Connect";
+
+  menuContent.appendChild(menuTitle);
+
+  let menuClose = document.createElement("div");
+  menuClose.innerHTML =
+    '<svg id="esp-tools-close-modal" stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="#000" stroke-width="2" d="M7,7 L17,17 M7,17 L17,7"></path></svg>';
+
+  menuContent.appendChild(menuClose);
+
+  menutitle.appendChild(menuContent);
+
   menu.appendChild(menutitle);
   var items = document.createElement("div");
-  items.setAttribute(
-    "style",
-    "color:#000;background:#fff;padding:4px 8px 4px 8px;"
-  );
+  items.classList.add(classes.items);
+  let p = document.createElement("p");
+  p.innerText = "Select a connection method to pair your device";
+  items.appendChild(p);
   menu.appendChild(items);
   // FIND OUT CORRECT TYPES FOR THIS
+
   endpoints.forEach(function (endpoint: any) {
     var supported = endpoint.isSupported();
     if (supported !== true)
       log(0, endpoint.name + " not supported, " + supported);
     var ep = document.createElement("div");
-    ep.setAttribute(
-      "style",
-      "width:300px;height:60px;background:#ccc;margin:4px 0px 4px 0px;padding:0px 0px 0px 68px;cursor:pointer;"
-    );
+    ep.classList.add(classes.endpoints);
     ep.innerHTML =
-      '<div style="position:absolute;left:8px;width:48px;height:48px;background:#999;padding:6px;cursor:pointer;">' +
+      '<div class="esp-tools-icons">' +
       endpoint.svg +
       "</div>" +
-      '<div style="font-size:150%;padding-top:8px;">' +
+      '<div class="esp-tools-name">' +
       endpoint.name +
       "</div>" +
-      '<div style="font-size:80%;color:#666">' +
+      '<div class="esp-tools-description">' +
       endpoint.description +
       "</div>";
     ep.onclick = function (evt) {
@@ -440,6 +548,18 @@ function connect(callback: Function) {
     };
     items.appendChild(ep);
   });
+
+  menuClose.onclick = function () {
+    document.body.removeChild(menu);
+    document.body.removeChild(e);
+    connection.isOpening = false;
+    if (connection.isOpen) {
+      connection.isOpen = false;
+    } else {
+      if (callback) callback(null);
+    }
+  };
+
   document.body.appendChild(e);
   document.body.appendChild(menu);
   return connection;
@@ -542,38 +662,36 @@ function write(data: string, callback?: Function, callbackNewline?: boolean) {
 }
 
 function evaluate(expr: string, cb: Function) {
-  if (!checkIfSupported()) return;
+  if (!checkIfSupported()) return false;
   if (isBusy) {
     log(3, "Busy - adding eval to queue");
     queue.push({ type: "eval", expr: expr, cb: cb });
-    return;
+    return false;
   }
   write(
     "\x10eval(process.env.CONSOLE).println(JSON.stringify(" + expr + "))\n",
     function (d: string) {
       try {
         var json = JSON.parse(d.trim());
-        cb(json);
+        cb(json, "success");
       } catch (e: any) {
         log(
           1,
           "Unable to decode " + JSON.stringify(d) + ", got " + e.toString()
         );
-        cb(
-          null,
-          "Unable to decode " + JSON.stringify(d) + ", got " + e.toString()
-        );
+        cb(null, "failed");
       }
     },
     true /*callbackNewline*/
   );
+  return true;
 }
 
 // ----------------------------------------------------------
 
 var uart: UART = {
   /// Are we writing debug information? 0 is no, 1 is some, 2 is more, 3 is all.
-  debug: 1,
+  debug: 3,
   /// Should we use flow control? Default is true
   flowControl: true,
   /// Used internally to write log information - you can replace this with your own function
@@ -584,6 +702,11 @@ var uart: UART = {
   // FIND OUT CORRECT TYPES FOR THIS
   writeProgress: function (charsSent?: number, charsTotal?: number) {
     // console.log(charsSent + "/" + charsTotal);
+  },
+
+  getWrittenData: function (): Promise<string> {
+    let str_chunks: string = sentChunks.join("");
+    return new Promise<string>((resolve) => resolve(str_chunks));
   },
   /** Connect to a new device - this creates a separate
    connection to the one `write` and `eval` use. */
