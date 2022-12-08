@@ -109,6 +109,7 @@ interface Connection {
   on(name: string, action: Function): void;
 }
 
+var sentChunks: string[] = [];
 interface UART {
   debug: number;
   flowControl: boolean;
@@ -121,6 +122,7 @@ interface UART {
   isConnected: () => boolean;
   getConnection: () => any;
   close: () => void;
+  getWrittenData: () => Promise<any>;
   modal: (callback: Function) => void;
 }
 
@@ -256,6 +258,7 @@ var WebBluetooth = {
         }
         connection.txInProgress = true;
         log(2, "Sending " + JSON.stringify(chunk));
+        sentChunks.push(JSON.stringify(chunk));
         txCharacteristic
           .writeValue(str2ab(chunk))
           .then(function () {
@@ -450,7 +453,7 @@ var WebSerial = {
       writer
         .write(str2ab(data))
         .then(function () {
-          callback?.();
+          callback?.(data);
         })
         .catch(function (error: Error) {
           log(0, "SEND ERROR: " + error);
@@ -688,7 +691,7 @@ function evaluate(expr: string, cb: Function) {
 
 var uart: UART = {
   /// Are we writing debug information? 0 is no, 1 is some, 2 is more, 3 is all.
-  debug: 1,
+  debug: 3,
   /// Should we use flow control? Default is true
   flowControl: true,
   /// Used internally to write log information - you can replace this with your own function
@@ -699,6 +702,11 @@ var uart: UART = {
   // FIND OUT CORRECT TYPES FOR THIS
   writeProgress: function (charsSent?: number, charsTotal?: number) {
     // console.log(charsSent + "/" + charsTotal);
+  },
+
+  getWrittenData: function (): Promise<string> {
+    let str_chunks: string = sentChunks.join("");
+    return new Promise<string>((resolve) => resolve(str_chunks));
   },
   /** Connect to a new device - this creates a separate
    connection to the one `write` and `eval` use. */

@@ -1,7 +1,14 @@
-import { WebBluetoothMock, DeviceMock } from "web-bluetooth-mock";
+import { WebBluetoothMock, DeviceMock, GattMock } from "web-bluetooth-mock";
 import { JSDOM } from "jsdom";
 import { uart as UART } from "../uart";
-import { Serializer } from "v8";
+import { SerialPortInstance } from "./assets/serialPort_mock";
+import {
+  BluetoothDeviceInstance,
+  BluetoothRemoteGATTServerInstance,
+  MockPort,
+  MockWB,
+  NewDeviceMock,
+} from "./assets/BluetoothRemoteGATTServer_mock";
 
 const dom = new JSDOM(`<!doctype html><html><body></body></html>`);
 
@@ -13,18 +20,17 @@ describe("connectToDevice", () => {
   it("should connect to bluetooth device", async () => {
     const device = new DeviceMock("puck.js", [0xffe0]);
     global.navigator = global.navigator || {};
-    global.navigator.bluetooth = new WebBluetoothMock([device]) as any;
+    global.navigator.bluetooth = new MockWB([device]) as any;
 
     Object.defineProperty(global, "navigator", {
       value: {
         ...global.navigator,
         platform: ["Win"],
         userAgent: ["Chrome/57"],
-        serial: new Serializer(),
+        serial: new SerialPortInstance(),
       },
       writable: true,
     });
-
     jest.spyOn(device.gatt, "connect");
 
     const p = new Promise((resolve) => {
@@ -49,5 +55,49 @@ describe("connectToDevice", () => {
       .catch(() => {
         expect(false);
       });
+  });
+});
+
+describe("writeToDevice", () => {
+  it("should be able to write to the device", async () => {
+    const device = new NewDeviceMock("puck.js", [0xffe0]);
+    global.navigator = global.navigator || {};
+    global.navigator.bluetooth = new MockWB([device]) as any;
+
+    Object.defineProperty(global, "navigator", {
+      value: {
+        ...global.navigator,
+        platform: ["Win"],
+        userAgent: ["Chrome/57"],
+        serial: {
+          requestPort(): Promise<MockPort> {
+            return new Promise((resolve) => resolve(new MockPort()));
+          },
+        },
+      },
+      writable: true,
+    });
+
+    let sent_str = "console.log('hello')";
+
+    const p = new Promise((resolve) => {
+      UART.write(sent_str);
+      setTimeout(() => {
+        resolve("");
+      }, 1000);
+    }).catch((err) => {
+      throw new Error(err);
+    });
+
+    const clenseData = (data: string) => {
+      let data_arr = data.split('""');
+      return data_arr[1].slice(0, -1);
+    };
+
+    await p.then(() => {
+      UART.getWrittenData().then((data: string) =>
+        expect(clenseData(data)).toBe(sent_str)
+      );
+    });
   });
 });
