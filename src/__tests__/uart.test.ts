@@ -90,7 +90,7 @@ describe("writeToDevice", () => {
     });
 
     const clenseData = (data: string) => {
-      let data_arr = data.split('""');
+      let data_arr = data.replace('""', ",").split(",");
       return data_arr[1].slice(0, -1);
     };
 
