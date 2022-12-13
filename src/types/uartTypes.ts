@@ -12,6 +12,10 @@ export interface Connection {
 }
 
 export interface UART {
+  sentChunks: string[];
+  isBusy: boolean;
+  queue: any[];
+  endpoints: any[];
   handleQueue: () => void;
   connect: (callback: Function) => any;
   checkIfSupported: () => any;

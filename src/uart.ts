@@ -1,340 +1,332 @@
-import jss from "jss";
-import preset from "jss-preset-default";
 import { Connection, UART } from "./types/uartTypes";
 import { ab2str, str2ab } from "./helpers/stringArrayBuffer";
-import { styles } from "./styles/modal";
-jss.setup(preset());
-
-const { classes } = jss.createStyleSheet(styles).attach();
-
-declare global {
-  interface Window {
-    MSStream: MSStreamType;
-  }
-}
-
-var sentChunks: string[] = [];
-
-interface MSStreamType {
-  type: string;
-  msClose(): void;
-  msDetachStream(): any;
-}
-
-declare const closeSerial: Function;
-
-var isBusy: boolean;
-var queue: any[] = [];
-
-var endpoints: any = [
-  {
-    name: "Web Bluetooth",
-    description: "Bluetooth LE devices",
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" fill="#d2d2d2"/></svg>',
-    isSupported: function () {
-      if (
-        navigator.platform.indexOf("Win") >= 0 &&
-        (navigator.userAgent.indexOf("Chrome/54") >= 0 ||
-          navigator.userAgent.indexOf("Chrome/55") >= 0 ||
-          navigator.userAgent.indexOf("Chrome/56") >= 0)
-      )
-        return "Chrome <56 in Windows has navigator.bluetooth but it's not implemented properly";
-      if (
-        window &&
-        window.location &&
-        window.location.protocol == "http:" &&
-        window.location.hostname != "localhost"
-      )
-        return "Serving off HTTP (not HTTPS) - Web Bluetooth not enabled";
-      if (navigator.bluetooth) return true;
-      var iOS =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      if (iOS) {
-        return "To use Web Bluetooth on iOS you'll need the WebBLE App.\nPlease go to https://itunes.apple.com/us/app/webble/id1193531073 to download it.";
-      } else {
-        return "This Web Browser doesn't support Web Bluetooth.\nPlease see https://www.espruino.com/Puck.js+Quick+Start";
-      }
-    },
-    connect: function (connection: Connection, callback: Function) {
-      var NORDIC_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-      var NORDIC_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-      var NORDIC_RX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-      var DEFAULT_CHUNKSIZE = 20;
-
-      // FIND OUT CORRECT TYPES FOR THIS
-      var btServer: any | undefined = undefined;
-      var btService: any;
-      var txCharacteristic: any;
-      var rxCharacteristic: any;
-      var txDataQueue: any[] = [];
-      var flowControlXOFF: boolean = false;
-      var chunkSize: number = DEFAULT_CHUNKSIZE;
-
-      connection.close = function (callback: Function) {
-        connection.isOpening = false;
-        if (connection.isOpen) {
-          connection.isOpen = false;
-          connection.emit("close");
-        } else {
-          if (callback) callback(null);
-        }
-        if (btServer) {
-          btServer.disconnect();
-          btServer = undefined;
-          txCharacteristic = undefined;
-          rxCharacteristic = undefined;
-        }
-      };
-
-      connection.write = function (data: string, callback?: Function) {
-        if (data)
-          txDataQueue.push({
-            data: data,
-            callback: callback,
-            maxLength: data.length,
-          });
-        if (connection.isOpen && !connection.txInProgress) writeChunk();
-
-        function writeChunk() {
-          if (flowControlXOFF) {
-            // flow control - try again later
-            setTimeout(writeChunk, 50);
-            return;
-          }
-          var chunk;
-          if (!txDataQueue.length) {
-            uart.writeProgress();
-            return;
-          }
-          var txItem = txDataQueue[0];
-          uart.writeProgress(
-            txItem.maxLength - txItem.data.length,
-            txItem.maxLength
-          );
-          if (txItem.data.length <= chunkSize) {
-            chunk = txItem.data;
-            txItem.data = undefined;
-          } else {
-            chunk = txItem.data.substr(0, chunkSize);
-            txItem.data = txItem.data.substr(chunkSize);
-          }
-          connection.txInProgress = true;
-          uart.log(2, "Sending " + JSON.stringify(chunk));
-          sentChunks.push(JSON.stringify(chunk));
-          txCharacteristic
-            .writeValue(str2ab(chunk))
-            .then(function () {
-              uart.log(3, "Sent");
-              if (!txItem.data) {
-                txDataQueue.shift(); // remove this element
-                if (txItem.callback) txItem.callback();
-              }
-              connection.txInProgress = false;
-              writeChunk();
-            })
-            .catch(function (error: Error) {
-              uart.log(1, "SEND ERROR: " + error);
-              txDataQueue = [];
-              connection.close();
-            });
-        }
-      };
-
-      navigator.bluetooth
-        .requestDevice({
-          filters: [
-            { namePrefix: "Puck.js" },
-            { namePrefix: "Pixl.js" },
-            { namePrefix: "MDBT42Q" },
-            { namePrefix: "Bangle" },
-            { namePrefix: "RuuviTag" },
-            { namePrefix: "iTracker" },
-            { namePrefix: "Thingy" },
-            { namePrefix: "Espruino" },
-            { services: [NORDIC_SERVICE] },
-          ],
-          optionalServices: [NORDIC_SERVICE],
-        })
-        .then(function (device) {
-          uart.log(1, "Device Name:       " + device.name);
-          uart.log(1, "Device ID:         " + device.id);
-          // Was deprecated: Should use getPrimaryServices for this in future
-          //log('BT>  Device UUIDs:      ' + device.uuids.join('\n' + ' '.repeat(21)));
-          device.addEventListener("gattserverdisconnected", function () {
-            uart.log(1, "Disconnected (gattserverdisconnected)");
-            connection.close();
-          });
-          return device.gatt!.connect();
-        })
-        .then(function (server) {
-          uart.log(1, "Connected");
-          btServer = server;
-          return server.getPrimaryService(NORDIC_SERVICE);
-        })
-        .then(function (service) {
-          uart.log(2, "Got service");
-          btService = service;
-          return btService.getCharacteristic(NORDIC_RX);
-        })
-        .then(function (characteristic) {
-          rxCharacteristic = characteristic;
-          uart.log(2, "RX characteristic:" + JSON.stringify(rxCharacteristic));
-          rxCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            function (event: any) {
-              var dataview = event.target.value;
-              if (dataview.byteLength > chunkSize) {
-                uart.log(
-                  2,
-                  "Received packet of length " +
-                    dataview.byteLength +
-                    ", increasing chunk size"
-                );
-                chunkSize = dataview.byteLength;
-              }
-              if (uart.flowControl) {
-                for (var i = 0; i < dataview.byteLength; i++) {
-                  var ch = dataview.getUint8(i);
-                  if (ch == 17) {
-                    // XON
-                    uart.log(2, "XON received => resume upload");
-                    flowControlXOFF = false;
-                  }
-                  if (ch == 19) {
-                    // XOFF
-                    uart.log(2, "XOFF received => pause upload");
-                    flowControlXOFF = true;
-                  }
-                }
-              }
-              var str = ab2str(dataview.buffer);
-              uart.log(3, "Received " + JSON.stringify(str));
-              connection.emit("data", str);
-            }
-          );
-          return rxCharacteristic.startNotifications();
-        })
-        .then(function () {
-          return btService.getCharacteristic(NORDIC_TX);
-        })
-        .then(function (characteristic) {
-          txCharacteristic = characteristic;
-          uart.log(2, "TX characteristic:" + JSON.stringify(txCharacteristic));
-        })
-        .then(function () {
-          connection.txInProgress = false;
-          connection.isOpen = true;
-          connection.isOpening = false;
-          isBusy = false;
-          queue = [];
-          callback(connection);
-          connection.emit("open");
-          // if we had any writes queued, do them now
-          connection.write();
-        })
-        .catch(function (error) {
-          uart.log(1, "ERROR: " + error);
-          connection.close();
-        });
-      return connection;
-    },
-  },
-  {
-    name: "Web Serial",
-    description: "USB connected devices",
-    svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2 1.21 0 2.2-.98 2.2-2.2 0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z" fill="#d2d2d2"/></svg>',
-    isSupported: function () {
-      if (!navigator.serial)
-        return "No navigator.serial - Web Serial not enabled";
-      if (
-        window &&
-        window.location &&
-        window.location.protocol == "http:" &&
-        window.location.hostname != "localhost"
-      )
-        return "Serving off HTTP (not HTTPS) - Web Serial not enabled";
-      return true;
-    },
-    connect: function (connection: Connection, callback: Function) {
-      var serialPort: SerialPort | undefined;
-      function disconnected() {
-        connection.isOpening = false;
-        if (connection.isOpen) {
-          uart.log(1, "Disconnected");
-          connection.isOpen = false;
-          connection.emit("close");
-        }
-      }
-      // TODO: Pass USB vendor and product ID filter when supported by Chrome.
-      navigator.serial
-        .requestPort()
-        .then(function (port) {
-          uart.log(1, "Connecting to serial port");
-          serialPort = port;
-          return port.open({ baudRate: 115200 });
-        })
-        .then(function () {
-          function readLoop() {
-            var reader = (serialPort as SerialPort).readable.getReader();
-            // FIND OUT CORRECT TYPES FOR THIS
-            reader.read().then(function ({ value, done }: any) {
-              reader.releaseLock();
-              if (value) {
-                var str = ab2str(value.buffer);
-                uart.log(3, "Received " + JSON.stringify(str));
-                connection.emit("data", str);
-              }
-              if (done) {
-                disconnected();
-              } else {
-                readLoop();
-              }
-            });
-          }
-          readLoop();
-          uart.log(1, "Serial connected. Receiving data...");
-          connection.txInProgress = false;
-          connection.isOpen = true;
-          connection.isOpening = false;
-          callback(connection);
-        })
-        .catch(function (error) {
-          uart.log(0, "ERROR: " + error);
-          disconnected();
-        });
-      connection.close = function (callback: Function) {
-        if (serialPort) {
-          serialPort.close();
-          serialPort = undefined;
-        }
-        disconnected();
-      };
-      connection.write = function (data: string, callback?: Function) {
-        var writer = (serialPort as SerialPort).writable.getWriter();
-        // TODO: progress?
-        writer
-          .write(str2ab(data))
-          .then(function () {
-            callback?.(data);
-          })
-          .catch(function (error: Error) {
-            uart.log(0, "SEND ERROR: " + error);
-            closeSerial();
-          });
-        writer.releaseLock();
-      };
-
-      return connection;
-    },
-  },
-];
+import { classes } from "./styles/modal";
 
 var connection: Connection | any;
 
 var uart: UART = {
+  isBusy: false,
+  queue: [],
+  sentChunks: [],
+  endpoints: [
+    {
+      name: "Web Bluetooth",
+      description: "Bluetooth LE devices",
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M17.71 7.71L12 2h-1v7.59L6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 11 14.41V22h1l5.71-5.71-4.3-4.29 4.3-4.29zM13 5.83l1.88 1.88L13 9.59V5.83zm1.88 10.46L13 18.17v-3.76l1.88 1.88z" fill="#d2d2d2"/></svg>',
+      isSupported: function () {
+        if (
+          navigator.platform.indexOf("Win") >= 0 &&
+          (navigator.userAgent.indexOf("Chrome/54") >= 0 ||
+            navigator.userAgent.indexOf("Chrome/55") >= 0 ||
+            navigator.userAgent.indexOf("Chrome/56") >= 0)
+        )
+          return "Chrome <56 in Windows has navigator.bluetooth but it's not implemented properly";
+        if (
+          window &&
+          window.location &&
+          window.location.protocol == "http:" &&
+          window.location.hostname != "localhost"
+        )
+          return "Serving off HTTP (not HTTPS) - Web Bluetooth not enabled";
+        if (navigator.bluetooth) return true;
+        var iOS =
+          [
+            "iPad Simulator",
+            "iPhone Simulator",
+            "iPod Simulator",
+            "iPad",
+            "iPhone",
+            "iPod",
+          ].includes(navigator.platform) ||
+          // iPad on iOS 13 detection
+          (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+        if (iOS) {
+          return "To use Web Bluetooth on iOS you'll need the WebBLE App.\nPlease go to https://itunes.apple.com/us/app/webble/id1193531073 to download it.";
+        } else {
+          return "This Web Browser doesn't support Web Bluetooth.\nPlease see https://www.espruino.com/Puck.js+Quick+Start";
+        }
+      },
+      connect: function (connection: Connection, callback: Function) {
+        var NORDIC_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        var NORDIC_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+        var NORDIC_RX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+        var DEFAULT_CHUNKSIZE = 20;
+
+        // FIND OUT CORRECT TYPES FOR THIS
+        var btServer: any | undefined = undefined;
+        var btService: any;
+        var txCharacteristic: any;
+        var rxCharacteristic: any;
+        var txDataQueue: any[] = [];
+        var flowControlXOFF: boolean = false;
+        var chunkSize: number = DEFAULT_CHUNKSIZE;
+
+        connection.close = function (callback: Function) {
+          connection.isOpening = false;
+          if (connection.isOpen) {
+            connection.isOpen = false;
+            connection.emit("close");
+          } else {
+            if (callback) callback(null);
+          }
+          if (btServer) {
+            btServer.disconnect();
+            btServer = undefined;
+            txCharacteristic = undefined;
+            rxCharacteristic = undefined;
+          }
+        };
+
+        connection.write = function (data: string, callback?: Function) {
+          if (data)
+            txDataQueue.push({
+              data: data,
+              callback: callback,
+              maxLength: data.length,
+            });
+          if (connection.isOpen && !connection.txInProgress) writeChunk();
+
+          function writeChunk() {
+            if (flowControlXOFF) {
+              // flow control - try again later
+              setTimeout(writeChunk, 50);
+              return;
+            }
+            var chunk;
+            if (!txDataQueue.length) {
+              uart.writeProgress();
+              return;
+            }
+            var txItem = txDataQueue[0];
+            uart.writeProgress(
+              txItem.maxLength - txItem.data.length,
+              txItem.maxLength
+            );
+            if (txItem.data.length <= chunkSize) {
+              chunk = txItem.data;
+              txItem.data = undefined;
+            } else {
+              chunk = txItem.data.substr(0, chunkSize);
+              txItem.data = txItem.data.substr(chunkSize);
+            }
+            connection.txInProgress = true;
+            uart.log(2, "Sending " + JSON.stringify(chunk));
+            uart.sentChunks.push(JSON.stringify(chunk));
+            txCharacteristic
+              .writeValue(str2ab(chunk))
+              .then(function () {
+                uart.log(3, "Sent");
+                if (!txItem.data) {
+                  txDataQueue.shift(); // remove this element
+                  if (txItem.callback) txItem.callback();
+                }
+                connection.txInProgress = false;
+                writeChunk();
+              })
+              .catch(function (error: Error) {
+                uart.log(1, "SEND ERROR: " + error);
+                txDataQueue = [];
+                connection.close();
+              });
+          }
+        };
+
+        navigator.bluetooth
+          .requestDevice({
+            filters: [
+              { namePrefix: "Puck.js" },
+              { namePrefix: "Pixl.js" },
+              { namePrefix: "MDBT42Q" },
+              { namePrefix: "Bangle" },
+              { namePrefix: "RuuviTag" },
+              { namePrefix: "iTracker" },
+              { namePrefix: "Thingy" },
+              { namePrefix: "Espruino" },
+              { services: [NORDIC_SERVICE] },
+            ],
+            optionalServices: [NORDIC_SERVICE],
+          })
+          .then(function (device) {
+            uart.log(1, "Device Name:       " + device.name);
+            uart.log(1, "Device ID:         " + device.id);
+            // Was deprecated: Should use getPrimaryServices for this in future
+            //log('BT>  Device UUIDs:      ' + device.uuids.join('\n' + ' '.repeat(21)));
+            device.addEventListener("gattserverdisconnected", function () {
+              uart.log(1, "Disconnected (gattserverdisconnected)");
+              connection.close();
+            });
+            return device.gatt!.connect();
+          })
+          .then(function (server) {
+            uart.log(1, "Connected");
+            btServer = server;
+            return server.getPrimaryService(NORDIC_SERVICE);
+          })
+          .then(function (service) {
+            uart.log(2, "Got service");
+            btService = service;
+            return btService.getCharacteristic(NORDIC_RX);
+          })
+          .then(function (characteristic) {
+            rxCharacteristic = characteristic;
+            uart.log(
+              2,
+              "RX characteristic:" + JSON.stringify(rxCharacteristic)
+            );
+            rxCharacteristic.addEventListener(
+              "characteristicvaluechanged",
+              function (event: any) {
+                var dataview = event.target.value;
+                if (dataview.byteLength > chunkSize) {
+                  uart.log(
+                    2,
+                    "Received packet of length " +
+                      dataview.byteLength +
+                      ", increasing chunk size"
+                  );
+                  chunkSize = dataview.byteLength;
+                }
+                if (uart.flowControl) {
+                  for (var i = 0; i < dataview.byteLength; i++) {
+                    var ch = dataview.getUint8(i);
+                    if (ch == 17) {
+                      // XON
+                      uart.log(2, "XON received => resume upload");
+                      flowControlXOFF = false;
+                    }
+                    if (ch == 19) {
+                      // XOFF
+                      uart.log(2, "XOFF received => pause upload");
+                      flowControlXOFF = true;
+                    }
+                  }
+                }
+                var str = ab2str(dataview.buffer);
+                uart.log(3, "Received " + JSON.stringify(str));
+                connection.emit("data", str);
+              }
+            );
+            return rxCharacteristic.startNotifications();
+          })
+          .then(function () {
+            return btService.getCharacteristic(NORDIC_TX);
+          })
+          .then(function (characteristic) {
+            txCharacteristic = characteristic;
+            uart.log(
+              2,
+              "TX characteristic:" + JSON.stringify(txCharacteristic)
+            );
+          })
+          .then(function () {
+            connection.txInProgress = false;
+            connection.isOpen = true;
+            connection.isOpening = false;
+            uart.isBusy = false;
+            uart.queue = [];
+            callback(connection);
+            connection.emit("open");
+            // if we had any writes queued, do them now
+            connection.write();
+          })
+          .catch(function (error) {
+            uart.log(1, "ERROR: " + error);
+            connection.close();
+          });
+        return connection;
+      },
+    },
+    {
+      name: "Web Serial",
+      description: "USB connected devices",
+      svg: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none"/><path d="M15 7v4h1v2h-3V5h2l-3-4-3 4h2v8H8v-2.07c.7-.37 1.2-1.08 1.2-1.93 0-1.21-.99-2.2-2.2-2.2-1.21 0-2.2.99-2.2 2.2 0 .85.5 1.56 1.2 1.93V13c0 1.11.89 2 2 2h3v3.05c-.71.37-1.2 1.1-1.2 1.95 0 1.22.99 2.2 2.2 2.2 1.21 0 2.2-.98 2.2-2.2 0-.85-.49-1.58-1.2-1.95V15h3c1.11 0 2-.89 2-2v-2h1V7h-4z" fill="#d2d2d2"/></svg>',
+      isSupported: function () {
+        if (!navigator.serial)
+          return "No navigator.serial - Web Serial not enabled";
+        if (
+          window &&
+          window.location &&
+          window.location.protocol == "http:" &&
+          window.location.hostname != "localhost"
+        )
+          return "Serving off HTTP (not HTTPS) - Web Serial not enabled";
+        return true;
+      },
+      connect: function (connection: Connection, callback: Function) {
+        var serialPort: SerialPort | undefined;
+        function disconnected() {
+          connection.isOpening = false;
+          if (connection.isOpen) {
+            uart.log(1, "Disconnected");
+            connection.isOpen = false;
+            connection.emit("close");
+          }
+        }
+        // TODO: Pass USB vendor and product ID filter when supported by Chrome.
+        navigator.serial
+          .requestPort()
+          .then(function (port) {
+            uart.log(1, "Connecting to serial port");
+            serialPort = port;
+            return port.open({ baudRate: 115200 });
+          })
+          .then(function () {
+            function readLoop() {
+              var reader = (serialPort as SerialPort).readable.getReader();
+              // FIND OUT CORRECT TYPES FOR THIS
+              reader.read().then(function ({ value, done }: any) {
+                reader.releaseLock();
+                if (value) {
+                  var str = ab2str(value.buffer);
+                  uart.log(3, "Received " + JSON.stringify(str));
+                  connection.emit("data", str);
+                }
+                if (done) {
+                  disconnected();
+                } else {
+                  readLoop();
+                }
+              });
+            }
+            readLoop();
+            uart.log(1, "Serial connected. Receiving data...");
+            connection.txInProgress = false;
+            connection.isOpen = true;
+            connection.isOpening = false;
+            callback(connection);
+          })
+          .catch(function (error) {
+            uart.log(0, "ERROR: " + error);
+            disconnected();
+          });
+        connection.close = function (callback: Function) {
+          if (serialPort) {
+            serialPort.close();
+            serialPort = undefined;
+          }
+          disconnected();
+        };
+        connection.write = function (data: string, callback?: Function) {
+          var writer = (serialPort as SerialPort).writable.getWriter();
+          // TODO: progress?
+          writer
+            .write(str2ab(data))
+            .then(function () {
+              callback?.(data);
+            })
+            .catch(function (error: Error) {
+              uart.log(0, "SEND ERROR: " + error);
+            });
+          writer.releaseLock();
+        };
+
+        return connection;
+      },
+    },
+  ],
   handleQueue: () => {
-    if (!queue.length) return;
-    var q = queue.shift();
+    if (!uart.queue.length) return;
+    var q = uart.queue.shift();
     uart.log(3, "Executing " + JSON.stringify(q) + " from queue");
     if (q.type == "eval") uart.eval(q.expr, q.cb);
     else if (q.type == "write")
@@ -393,9 +385,8 @@ var uart: UART = {
     p.innerText = "Select a connection method to pair your device";
     items.appendChild(p);
     menu.appendChild(items);
-    // FIND OUT CORRECT TYPES FOR THIS
 
-    endpoints.forEach(function (endpoint: any) {
+    uart.endpoints.forEach(function (endpoint: any) {
       var supported = endpoint.isSupported();
       if (supported !== true)
         uart.log(0, endpoint.name + " not supported, " + supported);
@@ -438,7 +429,7 @@ var uart: UART = {
   checkIfSupported: () => {
     var anySupported = false;
     // FIND OUT CORRECT TYPES FOR THIS
-    endpoints.forEach(function (endpoint: any) {
+    uart.endpoints.forEach(function (endpoint: any) {
       var supported = endpoint.isSupported();
       if (supported === true) anySupported = true;
       else uart.log(0, endpoint.name + " not supported, " + supported);
@@ -460,15 +451,15 @@ var uart: UART = {
   },
 
   getWrittenData: function (): Promise<string> {
-    let str_chunks: string = sentChunks.join("");
+    let str_chunks: string = uart.sentChunks.join("");
     return new Promise<string>((resolve) => resolve(str_chunks));
   },
   /// Write to a device and call back when the data is written.  Creates a connection if it doesn't exist
   write: (data: string, callback?: Function, callbackNewline?: boolean) => {
     if (!uart.checkIfSupported()) return;
-    if (isBusy) {
+    if (uart.isBusy) {
       uart.log(3, "Busy - adding write to queue");
-      queue.push({
+      uart.queue.push({
         type: "write",
         data: data,
         callback: callback,
@@ -490,7 +481,7 @@ var uart: UART = {
             if (cbTimeout) clearTimeout(cbTimeout);
             cbTimeout = undefined;
             if (callback) callback(l);
-            isBusy = false;
+            uart.isBusy = false;
             uart.handleQueue();
           }
         };
@@ -513,7 +504,7 @@ var uart: UART = {
           if (callbackNewline)
             uart.log(2, "write waiting for newline timed out");
           if (callback) callback(connection!.received);
-          isBusy = false;
+          uart.isBusy = false;
           uart.handleQueue();
           connection!.received = "";
         }
@@ -523,7 +514,7 @@ var uart: UART = {
 
     if (connection && (connection.isOpen || connection.isOpening)) {
       if (!connection.txInProgress) connection.received = "";
-      isBusy = true;
+      uart.isBusy = true;
       return connection.write(data, onWritten);
     }
 
@@ -543,16 +534,16 @@ var uart: UART = {
       connection!.on("close", function (d: string) {
         connection = undefined;
       });
-      isBusy = true;
+      uart.isBusy = true;
       connection!.write(data, onWritten);
     });
   },
   /// Evaluate an expression and call cb with the result. Creates a connection if it doesn't exist
   eval: (expr: string, cb: Function) => {
     if (!uart.checkIfSupported()) return false;
-    if (isBusy) {
+    if (uart.isBusy) {
       uart.log(3, "Busy - adding eval to queue");
-      queue.push({ type: "eval", expr: expr, cb: cb });
+      uart.queue.push({ type: "eval", expr: expr, cb: cb });
       return false;
     }
     uart.write(
