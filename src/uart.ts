@@ -1,6 +1,7 @@
 import { Connection, UART } from "./types/uartTypes";
 import { ab2str, str2ab } from "./helpers/stringArrayBuffer";
 import { classes } from "./styles/modal";
+import { isIOS } from "./helpers/isIOS";
 
 var connection: Connection | any;
 
@@ -29,17 +30,7 @@ var uart: UART = {
         )
           return "Serving off HTTP (not HTTPS) - Web Bluetooth not enabled";
         if (navigator.bluetooth) return true;
-        var iOS =
-          [
-            "iPad Simulator",
-            "iPhone Simulator",
-            "iPod Simulator",
-            "iPad",
-            "iPhone",
-            "iPod",
-          ].includes(navigator.platform) ||
-          // iPad on iOS 13 detection
-          (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+        var iOS = isIOS();
         if (iOS) {
           return "To use Web Bluetooth on iOS you'll need the WebBLE App.\nPlease go to https://itunes.apple.com/us/app/webble/id1193531073 to download it.";
         } else {
