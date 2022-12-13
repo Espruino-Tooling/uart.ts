@@ -11,15 +11,32 @@ export interface Connection {
   on(name: string, action: Function): void;
 }
 
+export interface Queue {
+  type: string;
+  data?: string;
+  expr?: string;
+  cb?: Function | undefined;
+  callback?: Function | undefined;
+  callbackNewline?: boolean | undefined;
+}
+
+export interface Endpoint {
+  name: string;
+  description: string;
+  svg: string;
+  isSupported: () => boolean | string;
+  connect: (connection: Connection, callback: Function) => any;
+}
+
 export interface UART {
-  sentChunks: string[];
+  debug: number;
   isBusy: boolean;
-  queue: any[];
-  endpoints: any[];
+  queue: Queue[];
+  sentChunks: string[];
+  endpoints: Endpoint[];
   handleQueue: () => void;
   connect: (callback: Function) => any;
-  checkIfSupported: () => any;
-  debug: number;
+  checkIfSupported: () => boolean;
   flowControl: boolean;
   log: (level: number, s: string) => void;
   write: any;

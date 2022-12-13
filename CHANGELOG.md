@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.2](https://github.com/espruino-tools/uart/compare/v1.7.1...v1.7.2) (2022-12-13)
+
+
+### Bug Fixes
+
+* **revamp:** moved attributes above methods ([7a1b3c2](https://github.com/espruino-tools/uart/commit/7a1b3c2a0b2504dafdd0404a956e8bebe52d4d5a))
+
 ### [1.7.1](https://github.com/espruino-tools/uart/compare/v1.7.0...v1.7.1) (2022-12-13)
 
 

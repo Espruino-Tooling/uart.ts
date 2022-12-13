@@ -316,9 +316,9 @@ var uart: UART = {
     if (!uart.queue.length) return;
     var q = uart.queue.shift();
     uart.log(3, "Executing " + JSON.stringify(q) + " from queue");
-    if (q.type == "eval") uart.eval(q.expr, q.cb);
-    else if (q.type == "write")
-      uart.write(q.data, q.callback, q.callbackNewline);
+    if (q!.type == "eval") uart.eval(q!.expr, q!.cb);
+    else if (q!.type == "write")
+      uart.write(q!.data, q!.callback, q!.callbackNewline);
     else uart.log(1, "Unknown queue item " + JSON.stringify(q));
   },
   connect: (callback: Function) => {
@@ -414,7 +414,7 @@ var uart: UART = {
     document.body.appendChild(menu);
     return connection;
   },
-  checkIfSupported: () => {
+  checkIfSupported: (): boolean => {
     var anySupported = false;
     // FIND OUT CORRECT TYPES FOR THIS
     uart.endpoints.forEach(function (endpoint: any) {
