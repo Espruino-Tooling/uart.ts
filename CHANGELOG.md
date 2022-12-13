@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.1](https://github.com/espruino-tools/uart/compare/v1.7.0...v1.7.1) (2022-12-13)
+
+
+### Bug Fixes
+
+* resolved issue in IOS check removing depreciated method ([83689a0](https://github.com/espruino-tools/uart/commit/83689a03aaf60cc3ec091af0f5c6bf8950227b42))
+
 ## [1.7.0](https://github.com/espruino-tools/uart/compare/v1.6.0...v1.7.0) (2022-12-13)
 
 

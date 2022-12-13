@@ -6,7 +6,9 @@ import { isIOS } from "./helpers/isIOS";
 var connection: Connection | any;
 
 var uart: UART = {
+  debug: 3,
   isBusy: false,
+  flowControl: true,
   queue: [],
   sentChunks: [],
   endpoints: [
@@ -85,14 +87,9 @@ var uart: UART = {
             }
             var chunk;
             if (!txDataQueue.length) {
-              uart.writeProgress();
               return;
             }
             var txItem = txDataQueue[0];
-            uart.writeProgress(
-              txItem.maxLength - txItem.data.length,
-              txItem.maxLength
-            );
             if (txItem.data.length <= chunkSize) {
               chunk = txItem.data;
               txItem.data = undefined;
@@ -427,25 +424,13 @@ var uart: UART = {
     });
     return anySupported;
   },
-  /// Are we writing debug information? 0 is no, 1 is some, 2 is more, 3 is all.
-  debug: 3,
-  /// Should we use flow control? Default is true
-  flowControl: true,
-  /// Used internally to write log information - you can replace this with your own function
   log: function (level: number, s: string) {
     if (level <= this.debug) console.log("<UART> " + s);
   },
-  /// Called with the current send progress or undefined when done - you can replace this with your own function
-  // FIND OUT CORRECT TYPES FOR THIS
-  writeProgress: function (charsSent?: number, charsTotal?: number) {
-    // console.log(charsSent + "/" + charsTotal);
-  },
-
   getWrittenData: function (): Promise<string> {
     let str_chunks: string = uart.sentChunks.join("");
     return new Promise<string>((resolve) => resolve(str_chunks));
   },
-  /// Write to a device and call back when the data is written.  Creates a connection if it doesn't exist
   write: (data: string, callback?: Function, callbackNewline?: boolean) => {
     if (!uart.checkIfSupported()) return;
     if (uart.isBusy) {
@@ -529,7 +514,6 @@ var uart: UART = {
       connection!.write(data, onWritten);
     });
   },
-  /// Evaluate an expression and call cb with the result. Creates a connection if it doesn't exist
   eval: (expr: string, cb: Function) => {
     if (!uart.checkIfSupported()) return false;
     if (uart.isBusy) {
@@ -555,7 +539,6 @@ var uart: UART = {
     );
     return true;
   },
-  /// Write the current time to the device
   setTime: function (cb: Function) {
     var d = new Date();
     var cmd = "setTime(" + d.getTime() / 1000 + ");";
@@ -566,22 +549,15 @@ var uart: UART = {
       ");\n";
     this.write(cmd, cb);
   },
-  /// Did `write` and `eval` manage to create a connection?
   isConnected: function () {
     return connection !== undefined;
   },
-  /// get the connection used by `write` and `eval`
   getConnection: function () {
     return connection;
   },
-  /// Close the connection used by `write` and `eval`
   close: function () {
     if (connection) connection.close();
   },
-  /** Utility function to fade out everything on the webpage and display
-  a window saying 'Click to continue'. When clicked it'll disappear and
-  'callback' will be called. This is useful because you can't initialise
-  Web Bluetooth unless you're doing so in response to a user input.*/
   modal: function (callback: Function) {
     var e = document.createElement("div");
     e.setAttribute(

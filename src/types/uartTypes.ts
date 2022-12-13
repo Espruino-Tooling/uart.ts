@@ -22,7 +22,6 @@ export interface UART {
   debug: number;
   flowControl: boolean;
   log: (level: number, s: string) => void;
-  writeProgress: (charsSent?: any, charsTotal?: any) => void;
   write: any;
   eval: any;
   setTime: (cb: Function) => void;
