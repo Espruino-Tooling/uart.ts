@@ -4,10 +4,9 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
 
 trigger:
-- main
+- dev
 
-pool:
-  name: default
+pool: default
 
 steps:
 - task: NodeTool@0
@@ -20,4 +19,4 @@ steps:
     npm run build
     npm run build:min
     npm run test
-  displayName: 'npm install and build'
+  displayName: 'npm install, test and build'
