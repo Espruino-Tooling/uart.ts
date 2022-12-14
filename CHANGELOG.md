@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.5](https://github.com/espruino-tools/uart/compare/v1.7.3...v1.7.5) (2022-12-14)
+
+
+### Bug Fixes
+
+* converted UART to class notation ([39a7365](https://github.com/espruino-tools/uart/commit/39a73653f501d84c4ad2403a161e0cad60af9025))
+
 ### [1.7.3](https://github.com/espruino-tools/uart/compare/v1.7.2...v1.7.3) (2022-12-14)
 
 
