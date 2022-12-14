@@ -29,16 +29,7 @@ export interface Endpoint {
 }
 
 export interface UART {
-  debug: number;
-  isBusy: boolean;
-  queue: Queue[];
-  sentChunks: string[];
-  endpoints: Endpoint[];
-  handleQueue: () => void;
   connect: (callback: Function) => any;
-  checkIfSupported: () => boolean;
-  flowControl: boolean;
-  log: (level: number, s: string) => void;
   write: any;
   eval: any;
   setTime: (cb: Function) => void;
@@ -46,7 +37,7 @@ export interface UART {
   getConnection: () => any;
   close: () => void;
   getWrittenData: () => Promise<any>;
-  modal: (callback: Function) => void;
+  // modal: (callback: Function) => void;
 }
 
 export interface MSStreamType {
