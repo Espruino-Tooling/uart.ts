@@ -1,4 +1,9 @@
-export const styles = {
+import jss from "jss";
+import preset from "jss-preset-default";
+
+jss.setup(preset());
+
+const styles = {
   menu: {
     color: "#b2b2b2b",
     background: "white",
@@ -82,3 +87,5 @@ export const styles = {
     },
   },
 };
+
+export const { classes } = jss.createStyleSheet(styles).attach();

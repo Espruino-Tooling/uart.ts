@@ -11,14 +11,25 @@ export interface Connection {
   on(name: string, action: Function): void;
 }
 
+export interface Queue {
+  type: string;
+  data?: string;
+  expr?: string;
+  cb?: Function | undefined;
+  callback?: Function | undefined;
+  callbackNewline?: boolean | undefined;
+}
+
+export interface Endpoint {
+  name: string;
+  description: string;
+  svg: string;
+  isSupported: () => boolean | string;
+  connect: (connection: Connection, callback: Function) => any;
+}
+
 export interface UART {
-  handleQueue: () => void;
   connect: (callback: Function) => any;
-  checkIfSupported: () => any;
-  debug: number;
-  flowControl: boolean;
-  log: (level: number, s: string) => void;
-  writeProgress: (charsSent?: any, charsTotal?: any) => void;
   write: any;
   eval: any;
   setTime: (cb: Function) => void;
@@ -26,7 +37,7 @@ export interface UART {
   getConnection: () => any;
   close: () => void;
   getWrittenData: () => Promise<any>;
-  modal: (callback: Function) => void;
+  // modal: (callback: Function) => void;
 }
 
 export interface MSStreamType {
