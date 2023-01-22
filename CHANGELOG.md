@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.6](https://github.com/espruino-tools/uart/compare/v1.7.5...v1.7.6) (2023-01-22)
+
+
+### Bug Fixes
+
+* updated missing min build for package publishing ([5f583ba](https://github.com/espruino-tools/uart/commit/5f583baa5b303c1232c6f353c839108f5ef76093))
+
 ### [1.7.5](https://github.com/espruino-tools/uart/compare/v1.7.3...v1.7.5) (2022-12-14)
 
 
