@@ -1,6 +1,6 @@
 {
   "name": "@espruino-tools/uart",
-  "version": "1.7.9",
+  "version": "1.7.10",
   "description": "A reimplementation of uart.js with some minor changes",
   "main": "lib/uart.js",
   "types": "lib/uart.d.ts",

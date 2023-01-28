@@ -454,9 +454,7 @@ class UARTClass implements UART {
       var maxTime = 300; // 30 sec - Max time we wait in total, even if getting data
       var dataWaitTime = callbackNewline
         ? 100 /*10 sec  if waiting for newline*/
-        : this.DATA_WAIT_TIME
-        ? this.DATA_WAIT_TIME
-        : 3; /*300ms*/
+        : 0; /*300ms*/
       var maxDataTime = dataWaitTime; // max time we wait after having received data
 
       const timeout = () => {
