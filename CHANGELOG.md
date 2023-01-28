@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.7](https://github.com/espruino-tools/uart/compare/v1.7.6...v1.7.7) (2023-01-28)
+
+
+### Bug Fixes
+
+* removed bad deps ([80eaf44](https://github.com/espruino-tools/uart/commit/80eaf44d8b1ba093762e95c54a79c5f32ac76672))
+
 ### [1.7.6](https://github.com/espruino-tools/uart/compare/v1.7.5...v1.7.6) (2023-01-22)
 
 

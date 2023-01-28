@@ -32,6 +32,7 @@ export interface UART {
   connect: (callback: Function) => any;
   write: any;
   eval: any;
+  isBusy: boolean;
   setTime: (cb: Function) => void;
   isConnected: () => boolean;
   getConnection: () => any;

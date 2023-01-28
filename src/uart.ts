@@ -5,7 +5,7 @@ import { isIOS } from "./helpers/isIOS";
 
 class UARTClass implements UART {
   #debug: number = 3;
-  #isBusy: boolean = false;
+  isBusy: boolean = false;
   #flowControl: boolean = true;
   #queue: Queue[] = [];
   #sentChunks: any[] = [];
@@ -210,7 +210,7 @@ class UARTClass implements UART {
             connection.txInProgress = false;
             connection.isOpen = true;
             connection.isOpening = false;
-            this.#isBusy = false;
+            this.isBusy = false;
             this.#queue = [];
             callback(connection);
             connection.emit("open");
@@ -411,7 +411,7 @@ class UARTClass implements UART {
   }
   write(data: string, callback?: Function, callbackNewline?: boolean) {
     if (!this.#checkIfSupported()) return;
-    if (this.#isBusy) {
+    if (this.isBusy) {
       this.#log(3, "Busy - adding write to queue");
       this.#queue.push({
         type: "write",
@@ -435,7 +435,7 @@ class UARTClass implements UART {
             if (cbTimeout) clearTimeout(cbTimeout);
             cbTimeout = undefined;
             if (callback) callback(l);
-            this.#isBusy = false;
+            this.isBusy = false;
             this.#handleQueue();
           }
         };
@@ -459,7 +459,7 @@ class UARTClass implements UART {
           if (callbackNewline)
             this.#log(2, "write waiting for newline timed out");
           if (callback) callback(this.#connection!.received);
-          this.#isBusy = false;
+          this.isBusy = false;
           this.#handleQueue();
           this.#connection!.received = "";
         }
@@ -473,7 +473,7 @@ class UARTClass implements UART {
       (this.#connection.isOpen || this.#connection.isOpening)
     ) {
       if (!this.#connection.txInProgress) this.#connection.received = "";
-      this.#isBusy = true;
+      this.isBusy = true;
       return this.#connection.write(data, onWritten);
     }
 
@@ -492,13 +492,13 @@ class UARTClass implements UART {
       this.#connection!.on("close", (d: string) => {
         this.#connection = undefined;
       });
-      this.#isBusy = true;
+      this.isBusy = true;
       this.#connection!.write(data, onWritten);
     });
   }
   eval(expr: string, cb: Function) {
     if (!this.#checkIfSupported()) return false;
-    if (this.#isBusy) {
+    if (this.isBusy) {
       this.#log(3, "Busy - adding eval to queue");
       this.#queue.push({ type: "eval", expr: expr, cb: cb });
       return false;
