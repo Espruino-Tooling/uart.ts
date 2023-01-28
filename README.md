@@ -20,7 +20,7 @@ _This package was built for the usage of the `@espruino-tools/core` package, I w
 
 ### CDN
 
-We use unpkg to allow for CDN usage within the script tags it can be accessed like so.
+We use unpkg to allow for CDN usage within the script tags it can be accessed like so within the body of the HTML file.
 
 ```html
 <script src="https://unpkg.com/@espruino-tools/uart@latest/min/main.min.js"></script>
@@ -33,7 +33,7 @@ run `npm i @espruino-tools/uart` in the root of your node project.
 This can then be utlised by:
 
 ```javascript
-import {uart} from "@espruino-tools/uart"
+import { uart } from "@espruino-tools/uart";
 
 let UART = uart;
 
