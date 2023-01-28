@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.7.8](https://github.com/espruino-tools/uart/compare/v1.7.7...v1.7.8) (2023-01-28)
+
+
+### Bug Fixes
+
+* added isBusy ([9dcee8d](https://github.com/espruino-tools/uart/commit/9dcee8dd3b66cf8eb21b2298b83bcedde3cbee88))
+
 ### [1.7.7](https://github.com/espruino-tools/uart/compare/v1.7.6...v1.7.7) (2023-01-28)
 
 

@@ -3,7 +3,17 @@ import { ab2str, str2ab } from "./helpers/stringArrayBuffer";
 import { classes } from "./styles/modal";
 import { isIOS } from "./helpers/isIOS";
 
+interface UARTOptions {
+  dataWaitTime: number;
+}
+
 class UARTClass implements UART {
+  DATA_WAIT_TIME?: number;
+
+  constructor(options?: UARTOptions) {
+    this.DATA_WAIT_TIME = options?.dataWaitTime;
+  }
+
   #debug: number = 3;
   isBusy: boolean = false;
   #flowControl: boolean = true;
@@ -444,6 +454,8 @@ class UARTClass implements UART {
       var maxTime = 300; // 30 sec - Max time we wait in total, even if getting data
       var dataWaitTime = callbackNewline
         ? 100 /*10 sec  if waiting for newline*/
+        : this.DATA_WAIT_TIME
+        ? this.DATA_WAIT_TIME
         : 3; /*300ms*/
       var maxDataTime = dataWaitTime; // max time we wait after having received data
 
